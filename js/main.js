@@ -50,7 +50,18 @@ Vue.component("card", {
                 <div>{{ card.deadline }}</div>
                 <div style="display: flex; gap: 5px; margin-top: 8px;">
                     <button @click="startEdit">✎</button>
-                    <button v-if="columnType === 'col1'" @click="$emit('move-forward')">→</button>
+
+                    <template v-if="columnType === 'col1'">
+                        <button @click="$emit('move-forward')">→</button>
+                    </template>
+
+                    <template v-else-if="columnType === 'col2'">
+                        <button @click="$emit('move-forward')">→</button>
+                    </template>
+
+                    <template v-else-if="columnType === 'col3'">
+                        <button @click="$emit('move-forward')">→</button>
+                    </template>
                 </div>
             </template>
 
@@ -114,12 +125,14 @@ new Vue({
                     title="В работе"
                     :cards="col2"
                     column-type="col2"
+                    @move-forward="moveToCol3"
                     @card-updated="saveToLocalStorage"
                 />
                 <board-column
                     title="Тестирование"
                     :cards="col3"
                     column-type="col3"
+                    @move-forward="moveToCol4"
                     @card-updated="saveToLocalStorage"
                 />
                 <board-column
@@ -160,6 +173,20 @@ new Vue({
       if (index !== -1) {
         this.col1.splice(index, 1);
         this.col2.push(card);
+      }
+    },
+    moveToCol3(card) {
+      const index = this.col2.findIndex((c) => c.id === card.id);
+      if (index !== -1) {
+        this.col2.splice(index, 1);
+        this.col3.push(card);
+      }
+    },
+    moveToCol4(card) {
+      const index = this.col3.findIndex((c) => c.id === card.id);
+      if (index !== -1) {
+        this.col3.splice(index, 1);
+        this.col4.push(card);
       }
     },
     saveToLocalStorage() {},
