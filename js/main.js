@@ -6,7 +6,7 @@ Vue.component("add-button", {
 });
 
 Vue.component("card", {
-  props: ["card"],
+  props: ["card", "columnType"],
   data() {
     return {
       isEditing: false,
@@ -36,16 +36,22 @@ Vue.component("card", {
   },
   template: `
         <div class="card">
-            <div>
-                {{ card.createdDate }}
-                <span v-if="card.editedDate">(ред)</span>
+            <div style="display: flex; justify-content: space-between;">
+                <span>
+                    {{ card.createdDate }}
+                    <span v-if="card.editedDate">(ред)</span>
+                </span>
+                <button v-if="columnType === 'col1'" @click="$emit('delete-card')">✗</button>
             </div>
 
             <template v-if="!isEditing">
                 <h3>{{ card.title }}</h3>
                 <p>{{ card.description }}</p>
                 <div>{{ card.deadline }}</div>
-                <button @click="startEdit">✎</button>
+                <div style="display: flex; gap: 5px; margin-top: 8px;">
+                    <button @click="startEdit">✎</button>
+                    <button v-if="columnType === 'col1'" @click="$emit('move-forward')">→</button>
+                </div>
             </template>
 
             <template v-else>
@@ -79,6 +85,9 @@ Vue.component("board-column", {
                     v-for="card in cards"
                     :key="card.id"
                     :card="card"
+                    :column-type="columnType"
+                    @delete-card="$emit('delete-card', card)"
+                    @move-forward="$emit('move-forward', card)"
                     @card-updated="$emit('card-updated')"
                 />
             </div>
@@ -97,6 +106,8 @@ new Vue({
                     :cards="col1"
                     column-type="col1"
                     @add-card="addCard"
+                    @delete-card="deleteCard"
+                    @move-forward="moveToCol2"
                     @card-updated="saveToLocalStorage"
                 />
                 <board-column
@@ -139,6 +150,17 @@ new Vue({
         returnReason: null,
       };
       this.col1.push(newCard);
+    },
+    deleteCard(card) {
+      const index = this.col1.findIndex((c) => c.id === card.id);
+      if (index !== -1) this.col1.splice(index, 1);
+    },
+    moveToCol2(card) {
+      const index = this.col1.findIndex((c) => c.id === card.id);
+      if (index !== -1) {
+        this.col1.splice(index, 1);
+        this.col2.push(card);
+      }
     },
     saveToLocalStorage() {},
   },
