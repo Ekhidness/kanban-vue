@@ -1,21 +1,62 @@
 Vue.component("add-button", {
   props: ["disabled"],
   template: `
-        <button
-            @click="$emit('click')"
-            :disabled="disabled"
-        >+ Добавить</button>
+        <button @click="$emit('click')" :disabled="disabled">+ Добавить</button>
     `,
 });
 
 Vue.component("card", {
   props: ["card"],
+  data() {
+    return {
+      isEditing: false,
+      editedTitle: "",
+      editedDescription: "",
+      editedDeadline: "",
+    };
+  },
+  methods: {
+    startEdit() {
+      this.editedTitle = this.card.title;
+      this.editedDescription = this.card.description;
+      this.editedDeadline = this.card.deadline;
+      this.isEditing = true;
+    },
+    saveEdit() {
+      this.card.title = this.editedTitle;
+      this.card.description = this.editedDescription;
+      this.card.deadline = this.editedDeadline;
+      this.card.editedDate = new Date().toLocaleString();
+      this.isEditing = false;
+      this.$emit("card-updated");
+    },
+    cancelEdit() {
+      this.isEditing = false;
+    },
+  },
   template: `
         <div class="card">
-            <div>{{ card.createdDate }}</div>
-            <h3>{{ card.title }}</h3>
-            <p>{{ card.description }}</p>
-            <div>Дедлайн: {{ card.deadline }}</div>
+            <div>
+                {{ card.createdDate }}
+                <span v-if="card.editedDate">(ред)</span>
+            </div>
+
+            <template v-if="!isEditing">
+                <h3>{{ card.title }}</h3>
+                <p>{{ card.description }}</p>
+                <div>{{ card.deadline }}</div>
+                <button @click="startEdit">✎</button>
+            </template>
+
+            <template v-else>
+                <input v-model="editedTitle" placeholder="Заголовок">
+                <textarea v-model="editedDescription" placeholder="Описание"></textarea>
+                <input type="date" v-model="editedDeadline">
+                <div>
+                    <button @click="saveEdit">✓</button>
+                    <button @click="cancelEdit">✗</button>
+                </div>
+            </template>
         </div>
     `,
 });
@@ -38,6 +79,7 @@ Vue.component("board-column", {
                     v-for="card in cards"
                     :key="card.id"
                     :card="card"
+                    @card-updated="$emit('card-updated')"
                 />
             </div>
         </div>
@@ -55,16 +97,19 @@ new Vue({
                     :cards="col1"
                     column-type="col1"
                     @add-card="addCard"
+                    @card-updated="saveToLocalStorage"
                 />
                 <board-column
                     title="В работе"
                     :cards="col2"
                     column-type="col2"
+                    @card-updated="saveToLocalStorage"
                 />
                 <board-column
                     title="Тестирование"
                     :cards="col3"
                     column-type="col3"
+                    @card-updated="saveToLocalStorage"
                 />
                 <board-column
                     title="Выполненные"
@@ -95,5 +140,6 @@ new Vue({
       };
       this.col1.push(newCard);
     },
+    saveToLocalStorage() {},
   },
 });
