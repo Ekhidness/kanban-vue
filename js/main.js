@@ -1,12 +1,44 @@
+Vue.component("add-button", {
+  props: ["disabled"],
+  template: `
+        <button
+            @click="$emit('click')"
+            :disabled="disabled"
+        >+ Добавить</button>
+    `,
+});
+
+Vue.component("card", {
+  props: ["card"],
+  template: `
+        <div class="card">
+            <div>{{ card.createdDate }}</div>
+            <h3>{{ card.title }}</h3>
+            <p>{{ card.description }}</p>
+            <div>Дедлайн: {{ card.deadline }}</div>
+        </div>
+    `,
+});
+
 Vue.component("board-column", {
   props: ["title", "cards", "columnType"],
+  components: {
+    "add-button": Vue.options.components["add-button"],
+    card: Vue.options.components["card"],
+  },
   template: `
         <div class="column">
             <h2>{{ title }}</h2>
+            <add-button
+                v-if="columnType === 'col1'"
+                @click="$emit('add-card')"
+            />
             <div class="cards">
-                <div v-for="card in cards" :key="card.id" class="card">
-                    <h3>{{ card.title }}</h3>
-                </div>
+                <card
+                    v-for="card in cards"
+                    :key="card.id"
+                    :card="card"
+                />
             </div>
         </div>
     `,
@@ -22,6 +54,7 @@ new Vue({
                     title="Запланированные"
                     :cards="col1"
                     column-type="col1"
+                    @add-card="addCard"
                 />
                 <board-column
                     title="В работе"
@@ -47,5 +80,20 @@ new Vue({
     col3: [],
     col4: [],
     nextId: 1,
+  },
+  methods: {
+    addCard() {
+      const now = new Date();
+      const newCard = {
+        id: this.nextId++,
+        title: "Новая задача",
+        description: "Описание",
+        deadline: now.toISOString().split("T")[0],
+        createdDate: now.toLocaleDateString(),
+        editedDate: null,
+        returnReason: null,
+      };
+      this.col1.push(newCard);
+    },
   },
 });
