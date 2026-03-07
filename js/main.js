@@ -10,6 +10,8 @@ Vue.component("card", {
   data() {
     return {
       isEditing: false,
+      showReasonInput: false,
+      returnReason: "",
       editedTitle: "",
       editedDescription: "",
       editedDeadline: "",
@@ -33,6 +35,13 @@ Vue.component("card", {
     cancelEdit() {
       this.isEditing = false;
     },
+    confirmReturn() {
+      if (this.returnReason.trim()) {
+        this.$emit("move-back", { card: this.card, reason: this.returnReason });
+        this.showReasonInput = false;
+        this.returnReason = "";
+      }
+    },
   },
   template: `
         <div class="card">
@@ -44,10 +53,15 @@ Vue.component("card", {
                 <button v-if="columnType === 'col1'" @click="$emit('delete-card')">✗</button>
             </div>
 
-            <template v-if="!isEditing">
+            <template v-if="!isEditing && !showReasonInput">
                 <h3>{{ card.title }}</h3>
                 <p>{{ card.description }}</p>
                 <div>{{ card.deadline }}</div>
+
+                <div v-if="card.returnReason" style="background: #fff3cd; padding: 5px; margin: 5px 0;">
+                    Причина: {{ card.returnReason }}
+                </div>
+
                 <div style="display: flex; gap: 5px; margin-top: 8px;">
                     <button @click="startEdit">✎</button>
 
@@ -61,7 +75,16 @@ Vue.component("card", {
 
                     <template v-else-if="columnType === 'col3'">
                         <button @click="$emit('move-forward')">→</button>
+                        <button @click="showReasonInput = true">←</button>
                     </template>
+                </div>
+            </template>
+
+            <template v-else-if="showReasonInput">
+                <textarea v-model="returnReason" placeholder="Причина возврата..."></textarea>
+                <div>
+                    <button @click="confirmReturn">✓</button>
+                    <button @click="showReasonInput = false">✗</button>
                 </div>
             </template>
 
@@ -99,6 +122,7 @@ Vue.component("board-column", {
                     :column-type="columnType"
                     @delete-card="$emit('delete-card', card)"
                     @move-forward="$emit('move-forward', card)"
+                    @move-back="$emit('move-back', $event)"
                     @card-updated="$emit('card-updated')"
                 />
             </div>
@@ -133,6 +157,7 @@ new Vue({
                     :cards="col3"
                     column-type="col3"
                     @move-forward="moveToCol4"
+                    @move-back="moveToCol2WithReason"
                     @card-updated="saveToLocalStorage"
                 />
                 <board-column
@@ -187,6 +212,14 @@ new Vue({
       if (index !== -1) {
         this.col3.splice(index, 1);
         this.col4.push(card);
+      }
+    },
+    moveToCol2WithReason(data) {
+      const index = this.col3.findIndex((c) => c.id === data.card.id);
+      if (index !== -1) {
+        data.card.returnReason = data.reason;
+        this.col3.splice(index, 1);
+        this.col2.push(data.card);
       }
     },
     saveToLocalStorage() {},
