@@ -58,7 +58,7 @@ Vue.component("card", {
                 <p>{{ card.description }}</p>
                 <div>{{ card.deadline }}</div>
 
-                <div v-if="card.returnReason" style="background: #fff3cd; padding: 5px; margin: 5px 0;">
+                <div v-if="card.returnReason && columnType=='col2'" style="background: rgba(255, 131, 131, 0.67); padding: 5px; margin: 5px 0;">
                     Причина: {{ card.returnReason }}
                 </div>
 
@@ -66,16 +66,16 @@ Vue.component("card", {
                     <button @click="startEdit">✎</button>
 
                     <template v-if="columnType === 'col1'">
-                        <button @click="$emit('move-forward')">→</button>
+                        <button @click="$emit('move-forward')">Переместить дальше</button>
                     </template>
 
                     <template v-else-if="columnType === 'col2'">
-                        <button @click="$emit('move-forward')">→</button>
+                        <button @click="$emit('move-forward')">Переместить дальше</button>
                     </template>
 
                     <template v-else-if="columnType === 'col3'">
-                        <button @click="$emit('move-forward')">→</button>
-                        <button @click="showReasonInput = true">←</button>
+                        <button @click="$emit('move-forward')">Завершить задачу</button>
+                        <button @click="showReasonInput = true">Вернуть в разработку</button>
                     </template>
                 </div>
             </template>
@@ -83,8 +83,8 @@ Vue.component("card", {
             <template v-else-if="showReasonInput">
                 <textarea v-model="returnReason" placeholder="Причина возврата..."></textarea>
                 <div>
-                    <button @click="confirmReturn">✓</button>
-                    <button @click="showReasonInput = false">✗</button>
+                    <button @click="confirmReturn">Ок</button>
+                    <button @click="showReasonInput = false">Отмена</button>
                 </div>
             </template>
 
@@ -93,8 +93,8 @@ Vue.component("card", {
                 <textarea v-model="editedDescription" placeholder="Описание"></textarea>
                 <input type="date" v-model="editedDeadline">
                 <div>
-                    <button @click="saveEdit">✓</button>
-                    <button @click="cancelEdit">✗</button>
+                    <button @click="saveEdit">Ок</button>
+                    <button @click="cancelEdit">Оьм</button>
                 </div>
             </template>
         </div>
