@@ -1,8 +1,8 @@
 Vue.component("add-button", {
   props: ["disabled"],
   template: `
-        <button @click="$emit('click')" :disabled="disabled">+ Добавить</button>
-    `,
+    <button @click="$emit('click')" :disabled="disabled">+ Добавить</button>
+  `,
 });
 
 Vue.component("card", {
@@ -44,138 +44,164 @@ Vue.component("card", {
     },
   },
   template: `
-        <div class="card">
-            <div style="display: flex; justify-content: space-between;">
-                <span>
-                    {{ card.createdDate }}
-                    <span v-if="card.editedDate">(ред)</span>
-                </span>
-                <button v-if="columnType === 'col1'" @click="$emit('delete-card')">✗</button>
-            </div>
+    <div class="card">
+      <div style="display: flex; justify-content: space-between;">
+        <span>
+          {{ card.createdDate }}
+          <span v-if="card.editedDate">(ред)</span>
+        </span>
+        <button v-if="columnType === 'col1'" @click="$emit('delete-card')">Удалить</button>
+      </div>
 
-            <template v-if="!isEditing && !showReasonInput">
-                <h3>{{ card.title }}</h3>
-                <p>{{ card.description }}</p>
-                <div>{{ card.deadline }}</div>
+      <template v-if="!isEditing && !showReasonInput">
+        <h3>{{ card.title }}</h3>
+        <p>{{ card.description }}</p>
+        <div>{{ card.deadline }}</div>
 
-                <div v-if="card.returnReason && columnType=='col2'" style="background: rgba(255, 131, 131, 0.67); padding: 5px; margin: 5px 0;">
-                    Причина: {{ card.returnReason }}
-                </div>
-
-                <div style="display: flex; gap: 5px; margin-top: 8px;">
-                    <button @click="startEdit">✎</button>
-
-                    <template v-if="columnType === 'col1'">
-                        <button @click="$emit('move-forward')">Переместить дальше</button>
-                    </template>
-
-                    <template v-else-if="columnType === 'col2'">
-                        <button @click="$emit('move-forward')">Переместить дальше</button>
-                    </template>
-
-                    <template v-else-if="columnType === 'col3'">
-                        <button @click="$emit('move-forward')">Завершить задачу</button>
-                        <button @click="showReasonInput = true">Вернуть в разработку</button>
-                    </template>
-                </div>
-            </template>
-
-            <template v-else-if="showReasonInput">
-                <textarea v-model="returnReason" placeholder="Причина возврата..."></textarea>
-                <div>
-                    <button @click="confirmReturn">Ок</button>
-                    <button @click="showReasonInput = false">Отмена</button>
-                </div>
-            </template>
-
-            <template v-else>
-                <input v-model="editedTitle" placeholder="Заголовок">
-                <textarea v-model="editedDescription" placeholder="Описание"></textarea>
-                <input type="date" v-model="editedDeadline">
-                <div>
-                    <button @click="saveEdit">Ок</button>
-                    <button @click="cancelEdit">Оьм</button>
-                </div>
-            </template>
+        <div v-if="card.returnReason && columnType=='col2'" style="background: rgba(255, 131, 131, 0.67); padding: 5px; margin: 5px 0;">
+          Причина: {{ card.returnReason }}
         </div>
-    `,
+
+        <div style="display: flex; gap: 5px; margin-top: 8px;">
+          <button v-if="columnType !== 'col4'" @click="startEdit">✎</button>
+
+          <template v-if="columnType === 'col1'">
+            <button @click="$emit('move-forward')">Переместить дальше</button>
+          </template>
+
+          <template v-else-if="columnType === 'col2'">
+            <button @click="$emit('move-forward')">Переместить дальше</button>
+          </template>
+
+          <template v-else-if="columnType === 'col3'">
+            <button @click="$emit('move-forward')">Завершить задачу</button>
+            <button @click="showReasonInput = true">Вернуть в разработку</button>
+          </template>
+        </div>
+      </template>
+
+      <template v-else-if="showReasonInput">
+        <textarea v-model="returnReason" placeholder="Причина возврата..."></textarea>
+        <div>
+          <button @click="confirmReturn">Ок</button>
+          <button @click="showReasonInput = false">Отмена</button>
+        </div>
+      </template>
+
+      <template v-else>
+        <input v-model="editedTitle" placeholder="Заголовок">
+        <textarea v-model="editedDescription" placeholder="Описание"></textarea>
+        <input type="date" v-model="editedDeadline">
+        <div>
+          <button @click="saveEdit">Ок</button>
+          <button @click="cancelEdit">Отмена</button>
+        </div>
+      </template>
+    </div>
+  `,
 });
 
 Vue.component("board-column", {
-  props: ["title", "cards", "columnType"],
+  props: {
+    title: String,
+    cards: Array,
+    columnType: String,
+    onAddCard: Function,
+    onDeleteCard: Function,
+    onMoveForward: Function,
+    onMoveBack: Function,
+    onCardUpdated: Function,
+  },
   components: {
     "add-button": Vue.options.components["add-button"],
     card: Vue.options.components["card"],
   },
   template: `
-        <div class="column">
-            <h2>{{ title }}</h2>
-            <add-button
-                v-if="columnType === 'col1'"
-                @click="$emit('add-card')"
-            />
-            <div class="cards">
-                <card
-                    v-for="card in cards"
-                    :key="card.id"
-                    :card="card"
-                    :column-type="columnType"
-                    @delete-card="$emit('delete-card', card)"
-                    @move-forward="$emit('move-forward', card)"
-                    @move-back="$emit('move-back', $event)"
-                    @card-updated="$emit('card-updated')"
-                />
-            </div>
-        </div>
-    `,
+    <div class="column">
+      <h2>{{ title }}</h2>
+      <add-button
+        v-if="columnType === 'col1'"
+        @click="onAddCard ? onAddCard() : null"
+      />
+      <div class="cards">
+        <card
+          v-for="card in cards"
+          :key="card.id"
+          :card="card"
+          :column-type="columnType"
+          @delete-card="onDeleteCard ? onDeleteCard(card) : null"
+          @move-forward="onMoveForward ? onMoveForward(card) : null"
+          @move-back="onMoveBack ? onMoveBack($event) : null"
+          @card-updated="onCardUpdated ? onCardUpdated() : null"
+        />
+      </div>
+    </div>
+  `,
 });
 
 new Vue({
   el: "#app",
   template: `
-        <div class="board">
-            <h1>Kanban доска</h1>
-            <div class="columns">
-                <board-column
-                    title="Запланированные"
-                    :cards="col1"
-                    column-type="col1"
-                    @add-card="addCard"
-                    @delete-card="deleteCard"
-                    @move-forward="moveToCol2"
-                    @card-updated="saveToLocalStorage"
-                />
-                <board-column
-                    title="В работе"
-                    :cards="col2"
-                    column-type="col2"
-                    @move-forward="moveToCol3"
-                    @card-updated="saveToLocalStorage"
-                />
-                <board-column
-                    title="Тестирование"
-                    :cards="col3"
-                    column-type="col3"
-                    @move-forward="moveToCol4"
-                    @move-back="moveToCol2WithReason"
-                    @card-updated="saveToLocalStorage"
-                />
-                <board-column
-                    title="Выполненные"
-                    :cards="col4"
-                    column-type="col4"
-                />
-            </div>
-        </div>
-    `,
+    <div class="board">
+      <h1>Kanban доска</h1>
+      <div class="columns">
+        <board-column
+          v-for="col in columns"
+          :key="col.type"
+          :title="col.title"
+          :cards="getCards(col.type)"
+          :column-type="col.type"
+          :on-add-card="col.type === 'col1' ? addCard : null"
+          :on-delete-card="col.type === 'col1' ? deleteCard : null"
+          :on-move-forward="getMoveForward(col.type)"
+          :on-move-back="col.type === 'col3' ? moveToCol2WithReason : null"
+          :on-card-updated="saveToLocalStorage"
+        />
+      </div>
+    </div>
+  `,
   data: {
     col1: [],
     col2: [],
     col3: [],
     col4: [],
     nextId: 1,
+    columns: [
+      { title: "Запланированные", type: "col1" },
+      { title: "В работе", type: "col2" },
+      { title: "Тестирование", type: "col3" },
+      { title: "Выполненные", type: "col4" },
+    ],
+  },
+  watch: {
+    col1: { handler: "saveToLocalStorage", deep: true },
+    col2: { handler: "saveToLocalStorage", deep: true },
+    col3: { handler: "saveToLocalStorage", deep: true },
+    col4: { handler: "saveToLocalStorage", deep: true },
+  },
+  mounted() {
+    const saved = localStorage.getItem("kanban-data");
+    if (saved) {
+      const data = JSON.parse(saved);
+      this.col1 = data.col1 || [];
+      this.col2 = data.col2 || [];
+      this.col3 = data.col3 || [];
+      this.col4 = data.col4 || [];
+      this.nextId = data.nextId || 1;
+    }
   },
   methods: {
+    getCards(type) {
+      return this[type];
+    },
+    getMoveForward(type) {
+      const map = {
+        col1: this.moveToCol2,
+        col2: this.moveToCol3,
+        col3: this.moveToCol4,
+      };
+      return map[type] || null;
+    },
     addCard() {
       const now = new Date();
       const newCard = {
@@ -222,6 +248,15 @@ new Vue({
         this.col2.push(data.card);
       }
     },
-    saveToLocalStorage() {},
+    saveToLocalStorage() {
+      const data = {
+        col1: this.col1,
+        col2: this.col2,
+        col3: this.col3,
+        col4: this.col4,
+        nextId: this.nextId,
+      };
+      localStorage.setItem("kanban-data", JSON.stringify(data));
+    },
   },
 });
