@@ -43,8 +43,16 @@ Vue.component("card", {
       }
     },
   },
+  computed: {
+    isOverdue() {
+      if (this.columnType !== "col4") return false;
+      const today = new Date();
+      const deadline = new Date(this.card.deadline);
+      return today > deadline;
+    },
+  },
   template: `
-    <div class="card">
+    <div class="card" :class="{ overdue: isOverdue }">
       <div style="display: flex; justify-content: space-between;">
         <span>
           {{ card.createdDate }}
@@ -54,16 +62,20 @@ Vue.component("card", {
       </div>
 
       <template v-if="!isEditing && !showReasonInput">
+        <div v-if="columnType === 'col4'" class="status-badge" :class="{ overdue: isOverdue }">
+          {{ isOverdue ? 'Просрочена' : 'Завершена в срок' }}
+        </div>
+
         <h3>{{ card.title }}</h3>
         <p>{{ card.description }}</p>
-        <div>{{ card.deadline }}</div>
+        <div>Дедлайн: {{ card.deadline }}</div>
 
         <div v-if="card.returnReason && columnType=='col2'" style="background: rgba(255, 131, 131, 0.67); padding: 5px; margin: 5px 0;">
           Причина: {{ card.returnReason }}
         </div>
 
         <div style="display: flex; gap: 5px; margin-top: 8px;">
-          <button v-if="columnType !== 'col4'" @click="startEdit">✎</button>
+          <button v-if="columnType !== 'col4'" @click="startEdit">Редактировать</button>
 
           <template v-if="columnType === 'col1'">
             <button @click="$emit('move-forward')">Переместить дальше</button>
