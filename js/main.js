@@ -6,7 +6,7 @@ Vue.component("add-button", {
 });
 
 Vue.component("card", {
-  props: ["card", "columnType"],
+  props: ["card", "columnType", "isMoving"],
   data() {
     return {
       isEditing: false,
@@ -37,102 +37,10 @@ Vue.component("card", {
     },
     confirmReturn() {
       if (this.returnReason.trim()) {
-        this.animateAndEmit("move-back", {
-          card: this.card,
-          reason: this.returnReason,
-        });
+        this.$emit("move-back", { card: this.card, reason: this.returnReason });
         this.showReasonInput = false;
         this.returnReason = "";
       }
-    },
-    animateMoveForward() {
-      this.animateAndEmit("move-forward");
-    },
-    animateAndEmit(eventName, payload = null) {
-      const element = this.$el;
-      const rect = element.getBoundingClientRect();
-
-      const clone = element.cloneNode(true);
-      clone.classList.add("flying-card");
-      clone.classList.remove("dragging");
-      clone.style.position = "fixed";
-      clone.style.left = rect.left + "px";
-      clone.style.top = rect.top + "px";
-      clone.style.width = rect.width + "px";
-      clone.style.height = rect.height + "px";
-      clone.style.margin = "0";
-      clone.style.zIndex = "9999";
-      clone.style.pointerEvents = "none";
-      clone.style.transition =
-        "all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)";
-
-      document.body.appendChild(clone);
-
-      element.style.opacity = "0";
-      element.style.transform = "scale(0.8)";
-
-      setTimeout(() => {
-        const targetColumn = this.getTargetColumn();
-        if (targetColumn) {
-          const targetRect = targetColumn.getBoundingClientRect();
-          const cardsContainer = targetColumn.querySelector(".cards");
-
-          if (cardsContainer) {
-            const containerRect = cardsContainer.getBoundingClientRect();
-            const newLeft = containerRect.left + 10;
-            const newTop = containerRect.top + containerRect.height - 20;
-
-            clone.style.left = newLeft + "px";
-            clone.style.top = newTop + "px";
-            clone.style.transform = "scale(0.9) rotate(5deg)";
-            clone.style.opacity = "0.7";
-          }
-        } else {
-          clone.style.transform = "scale(0.5) rotate(180deg)";
-          clone.style.opacity = "0";
-        }
-      }, 50);
-
-      setTimeout(() => {
-        if (payload !== null) {
-          this.$emit(eventName, payload);
-        } else {
-          this.$emit(eventName);
-        }
-
-        setTimeout(() => {
-          if (clone.parentNode) {
-            clone.parentNode.removeChild(clone);
-          }
-        }, 100);
-      }, 650);
-    },
-    getTargetColumn() {
-      const columnMap = {
-        col1: "col2",
-        col2: "col3",
-        col3: "col4",
-      };
-
-      const targetType = columnMap[this.columnType];
-      if (!targetType) return null;
-
-      const columns = document.querySelectorAll(".column");
-      for (let col of columns) {
-        const h2 = col.querySelector("h2");
-        if (h2) {
-          const columnTypes = {
-            Запланированные: "col1",
-            "В работе": "col2",
-            Тестирование: "col3",
-            Выполненные: "col4",
-          };
-          if (columnTypes[h2.textContent.trim()] === targetType) {
-            return col;
-          }
-        }
-      }
-      return null;
     },
     onDragStart(e) {
       if (this.columnType === "col4") {
@@ -145,17 +53,6 @@ Vue.component("card", {
       };
       e.dataTransfer.setData("text/plain", JSON.stringify(data));
       e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setDragImage(
-        this.$el,
-        this.$el.offsetWidth / 2,
-        this.$el.offsetHeight / 2,
-      );
-      setTimeout(() => {
-        this.$el.classList.add("dragging");
-      }, 0);
-    },
-    onDragEnd() {
-      this.$el.classList.remove("dragging");
     },
   },
   computed: {
@@ -167,10 +64,9 @@ Vue.component("card", {
     },
   },
   template: `
-    <div class="card" :class="{ overdue: isOverdue, 'no-drag': columnType === 'col4' }"
+    <div class="card" :class="{ overdue: isOverdue, 'no-drag': columnType === 'col4', 'moving': isMoving }"
          :draggable="columnType !== 'col4'"
-         @dragstart="onDragStart"
-         @dragend="onDragEnd">
+         @dragstart="onDragStart">
       <div style="display: flex; justify-content: space-between;">
         <span>
           {{ card.createdDate }}
@@ -196,15 +92,15 @@ Vue.component("card", {
           <button v-if="columnType !== 'col4'" @click="startEdit">Редактировать</button>
 
           <template v-if="columnType === 'col1'">
-            <button @click="animateMoveForward">Переместить дальше</button>
+            <button @click="$emit('move-forward')">Переместить дальше</button>
           </template>
 
           <template v-else-if="columnType === 'col2'">
-            <button @click="animateMoveForward">Переместить дальше</button>
+            <button @click="$emit('move-forward')">Переместить дальше</button>
           </template>
 
           <template v-else-if="columnType === 'col3'">
-            <button @click="animateMoveForward">Завершить задачу</button>
+            <button @click="$emit('move-forward')">Завершить задачу</button>
             <button @click="showReasonInput = true">Вернуть в разработку</button>
           </template>
         </div>
@@ -240,7 +136,7 @@ Vue.component("board-column", {
     onMoveForward: Function,
     onMoveBack: Function,
     onCardUpdated: Function,
-    onDropCard: Function,
+    movingCardId: String,
   },
   components: {
     card: Vue.options.components["card"],
@@ -253,11 +149,9 @@ Vue.component("board-column", {
   methods: {
     onDragOver(e) {
       e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
       this.isDragOver = true;
     },
-    onDragLeave(e) {
-      e.preventDefault();
+    onDragLeave() {
       this.isDragOver = false;
     },
     onDrop(e) {
@@ -267,19 +161,12 @@ Vue.component("board-column", {
       const data = e.dataTransfer.getData("text/plain");
 
       if (data) {
-        try {
-          const parsed = JSON.parse(data);
-
-          const payload = {
-            cardId: parsed.cardId,
-            fromColumn: parsed.fromColumn,
-            toColumn: this.columnType,
-          };
-
-          this.$emit("drop-card", payload);
-        } catch (err) {
-          console.error("Ошибка парсинга:", err);
-        }
+        const parsed = JSON.parse(data);
+        this.$emit("drop-card", {
+          cardId: parsed.cardId,
+          fromColumn: parsed.fromColumn,
+          toColumn: this.columnType,
+        });
       }
     },
   },
@@ -295,6 +182,7 @@ Vue.component("board-column", {
           :key="card.id"
           :card="card"
           :column-type="columnType"
+          :is-moving="movingCardId === card.id"
           @delete-card="onDeleteCard ? onDeleteCard(card) : null"
           @move-forward="onMoveForward ? onMoveForward(card) : null"
           @move-back="onMoveBack ? onMoveBack($event) : null"
@@ -357,6 +245,7 @@ new Vue({
             :title="col.title"
             :cards="getCards(col.type)"
             :column-type="col.type"
+            :moving-card-id="movingCardId"
             :on-delete-card="col.type === 'col1' ? deleteCard : null"
             :on-move-forward="getMoveForward(col.type)"
             :on-move-back="col.type === 'col3' ? moveToCol2WithReason : null"
@@ -373,6 +262,7 @@ new Vue({
     col3: [],
     col4: [],
     nextId: 1,
+    movingCardId: null,
     columns: [
       { title: "Запланированные", type: "col1" },
       { title: "В работе", type: "col2" },
@@ -427,77 +317,100 @@ new Vue({
       if (index !== -1) this.col1.splice(index, 1);
     },
     moveToCol2(card) {
-      const index = this.col1.findIndex((c) => c.id === card.id);
-      if (index !== -1) {
-        this.col1.splice(index, 1);
-        this.col2.push(card);
-      }
+      this.movingCardId = card.id;
+      setTimeout(() => {
+        const index = this.col1.findIndex((c) => c.id === card.id);
+        if (index !== -1) {
+          this.col1.splice(index, 1);
+          this.col2.push(card);
+        }
+        setTimeout(() => {
+          this.movingCardId = null;
+        }, 400);
+      }, 50);
     },
     moveToCol3(card) {
-      const index = this.col2.findIndex((c) => c.id === card.id);
-      if (index !== -1) {
-        this.col2.splice(index, 1);
-        this.col3.push(card);
-      }
+      this.movingCardId = card.id;
+      setTimeout(() => {
+        const index = this.col2.findIndex((c) => c.id === card.id);
+        if (index !== -1) {
+          this.col2.splice(index, 1);
+          this.col3.push(card);
+        }
+        setTimeout(() => {
+          this.movingCardId = null;
+        }, 400);
+      }, 50);
     },
     moveToCol4(card) {
-      const index = this.col3.findIndex((c) => c.id === card.id);
-      if (index !== -1) {
-        this.col3.splice(index, 1);
-        this.col4.push(card);
-      }
+      this.movingCardId = card.id;
+      setTimeout(() => {
+        const index = this.col3.findIndex((c) => c.id === card.id);
+        if (index !== -1) {
+          this.col3.splice(index, 1);
+          this.col4.push(card);
+        }
+        setTimeout(() => {
+          this.movingCardId = null;
+        }, 400);
+      }, 50);
     },
     moveToCol2WithReason(data) {
-      const index = this.col3.findIndex((c) => c.id === data.card.id);
-      if (index !== -1) {
-        data.card.returnReason = data.reason;
-        this.col3.splice(index, 1);
-        this.col2.push(data.card);
-      }
+      this.movingCardId = data.card.id;
+      setTimeout(() => {
+        const index = this.col3.findIndex((c) => c.id === data.card.id);
+        if (index !== -1) {
+          data.card.returnReason = data.reason;
+          this.col3.splice(index, 1);
+          this.col2.push(data.card);
+        }
+        setTimeout(() => {
+          this.movingCardId = null;
+        }, 400);
+      }, 50);
     },
     handleDrop(data) {
       const { cardId, fromColumn, toColumn } = data;
 
-      if (!data || !cardId) {
-        return;
-      }
-
-      if (fromColumn === toColumn) {
-        return;
-      }
-
-      if (fromColumn === "col4") {
+      if (
+        !data ||
+        !cardId ||
+        fromColumn === toColumn ||
+        fromColumn === "col4"
+      ) {
         return;
       }
 
       const fromArr = this[fromColumn];
       const toArr = this[toColumn];
 
-      if (!fromArr || !toArr) {
-        return;
-      }
+      if (!fromArr || !toArr) return;
 
       const cardIndex = fromArr.findIndex((c) => c.id === cardId);
 
       if (cardIndex !== -1) {
         const card = fromArr[cardIndex];
-
-        const newFromArr = fromArr.filter((c) => c.id !== cardId);
-        const newToArr = [...toArr, card];
-
-        this[fromColumn] = newFromArr;
-        this[toColumn] = newToArr;
+        this.movingCardId = cardId;
+        setTimeout(() => {
+          this[fromColumn] = fromArr.filter((c) => c.id !== cardId);
+          this[toColumn] = [...toArr, card];
+          setTimeout(() => {
+            this.movingCardId = null;
+          }, 400);
+        }, 50);
       }
     },
     saveToLocalStorage() {
-      const data = {
-        col1: this.col1,
-        col2: this.col2,
-        col3: this.col3,
-        col4: this.col4,
-        nextId: this.nextId,
-      };
-      localStorage.setItem("kanban-data", JSON.stringify(data));
+      localStorage.setItem(
+        "kanban-data",
+        JSON.stringify({
+          col1: this.col1,
+          col2: this.col2,
+          col3: this.col3,
+          col4: this.col4,
+          nextId: this.nextId,
+        }),
+      );
     },
   },
 });
