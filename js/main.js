@@ -37,10 +37,102 @@ Vue.component("card", {
     },
     confirmReturn() {
       if (this.returnReason.trim()) {
-        this.$emit("move-back", { card: this.card, reason: this.returnReason });
+        this.animateAndEmit("move-back", {
+          card: this.card,
+          reason: this.returnReason,
+        });
         this.showReasonInput = false;
         this.returnReason = "";
       }
+    },
+    animateMoveForward() {
+      this.animateAndEmit("move-forward");
+    },
+    animateAndEmit(eventName, payload = null) {
+      const element = this.$el;
+      const rect = element.getBoundingClientRect();
+
+      const clone = element.cloneNode(true);
+      clone.classList.add("flying-card");
+      clone.classList.remove("dragging");
+      clone.style.position = "fixed";
+      clone.style.left = rect.left + "px";
+      clone.style.top = rect.top + "px";
+      clone.style.width = rect.width + "px";
+      clone.style.height = rect.height + "px";
+      clone.style.margin = "0";
+      clone.style.zIndex = "9999";
+      clone.style.pointerEvents = "none";
+      clone.style.transition =
+        "all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)";
+
+      document.body.appendChild(clone);
+
+      element.style.opacity = "0";
+      element.style.transform = "scale(0.8)";
+
+      setTimeout(() => {
+        const targetColumn = this.getTargetColumn();
+        if (targetColumn) {
+          const targetRect = targetColumn.getBoundingClientRect();
+          const cardsContainer = targetColumn.querySelector(".cards");
+
+          if (cardsContainer) {
+            const containerRect = cardsContainer.getBoundingClientRect();
+            const newLeft = containerRect.left + 10;
+            const newTop = containerRect.top + containerRect.height - 20;
+
+            clone.style.left = newLeft + "px";
+            clone.style.top = newTop + "px";
+            clone.style.transform = "scale(0.9) rotate(5deg)";
+            clone.style.opacity = "0.7";
+          }
+        } else {
+          clone.style.transform = "scale(0.5) rotate(180deg)";
+          clone.style.opacity = "0";
+        }
+      }, 50);
+
+      setTimeout(() => {
+        if (payload !== null) {
+          this.$emit(eventName, payload);
+        } else {
+          this.$emit(eventName);
+        }
+
+        setTimeout(() => {
+          if (clone.parentNode) {
+            clone.parentNode.removeChild(clone);
+          }
+        }, 100);
+      }, 650);
+    },
+    getTargetColumn() {
+      const columnMap = {
+        col1: "col2",
+        col2: "col3",
+        col3: "col4",
+      };
+
+      const targetType = columnMap[this.columnType];
+      if (!targetType) return null;
+
+      const columns = document.querySelectorAll(".column");
+      for (let col of columns) {
+        const h2 = col.querySelector("h2");
+        if (h2) {
+          const columnTypes = {
+            Запланированные: "col1",
+            "В работе": "col2",
+            Тестирование: "col3",
+            Выполненные: "col4",
+          };
+          if (columnTypes[h2.textContent.trim()] === targetType) {
+            return col;
+          }
+        }
+      }
+      return null;
     },
     onDragStart(e) {
       if (this.columnType === "col4") {
@@ -53,7 +145,14 @@ Vue.component("card", {
       };
       e.dataTransfer.setData("text/plain", JSON.stringify(data));
       e.dataTransfer.effectAllowed = "move";
-      this.$el.classList.add("dragging");
+      e.dataTransfer.setDragImage(
+        this.$el,
+        this.$el.offsetWidth / 2,
+        this.$el.offsetHeight / 2,
+      );
+      setTimeout(() => {
+        this.$el.classList.add("dragging");
+      }, 0);
     },
     onDragEnd() {
       this.$el.classList.remove("dragging");
@@ -97,15 +196,15 @@ Vue.component("card", {
           <button v-if="columnType !== 'col4'" @click="startEdit">Редактировать</button>
 
           <template v-if="columnType === 'col1'">
-            <button @click="$emit('move-forward')">Переместить дальше</button>
+            <button @click="animateMoveForward">Переместить дальше</button>
           </template>
 
           <template v-else-if="columnType === 'col2'">
-            <button @click="$emit('move-forward')">Переместить дальше</button>
+            <button @click="animateMoveForward">Переместить дальше</button>
           </template>
 
           <template v-else-if="columnType === 'col3'">
-            <button @click="$emit('move-forward')">Завершить задачу</button>
+            <button @click="animateMoveForward">Завершить задачу</button>
             <button @click="showReasonInput = true">Вернуть в разработку</button>
           </template>
         </div>
