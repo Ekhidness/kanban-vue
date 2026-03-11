@@ -93,6 +93,12 @@ h1 {
   padding: 15px;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: background 0.3s;
+}
+
+.column.drag-over {
+  background: rgba(255, 255, 255, 0.3);
+  border: 2px dashed white;
 }
 
 .column h2 {
@@ -106,6 +112,13 @@ h1 {
   border-bottom: 2px solid rgba(255, 255, 255, 0.3);
 }
 
+.cards {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .card {
   background: white;
   padding: 16px;
@@ -114,6 +127,16 @@ h1 {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   border-left: 4px solid transparent;
+  cursor: grab;
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+.card.dragging {
+  opacity: 0.5;
+  transform: rotate(3deg);
 }
 
 .card:hover {

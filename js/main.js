@@ -42,6 +42,22 @@ Vue.component("card", {
         this.returnReason = "";
       }
     },
+    onDragStart(e) {
+      if (this.columnType === "col4") {
+        e.preventDefault();
+        return;
+      }
+      const data = {
+        cardId: this.card.id,
+        fromColumn: this.columnType,
+      };
+      e.dataTransfer.setData("text/plain", JSON.stringify(data));
+      e.dataTransfer.effectAllowed = "move";
+      this.$el.classList.add("dragging");
+    },
+    onDragEnd() {
+      this.$el.classList.remove("dragging");
+    },
   },
   computed: {
     isOverdue() {
@@ -52,7 +68,10 @@ Vue.component("card", {
     },
   },
   template: `
-    <div class="card" :class="{ overdue: isOverdue }">
+    <div class="card" :class="{ overdue: isOverdue, 'no-drag': columnType === 'col4' }"
+         :draggable="columnType !== 'col4'"
+         @dragstart="onDragStart"
+         @dragend="onDragEnd">
       <div style="display: flex; justify-content: space-between;">
         <span>
           {{ card.createdDate }}
@@ -122,14 +141,56 @@ Vue.component("board-column", {
     onMoveForward: Function,
     onMoveBack: Function,
     onCardUpdated: Function,
+    onDropCard: Function,
   },
   components: {
     card: Vue.options.components["card"],
   },
+  data() {
+    return {
+      isDragOver: false,
+    };
+  },
+  methods: {
+    onDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      this.isDragOver = true;
+    },
+    onDragLeave(e) {
+      e.preventDefault();
+      this.isDragOver = false;
+    },
+    onDrop(e) {
+      e.preventDefault();
+      this.isDragOver = false;
+
+      const data = e.dataTransfer.getData("text/plain");
+
+      if (data) {
+        try {
+          const parsed = JSON.parse(data);
+
+          const payload = {
+            cardId: parsed.cardId,
+            fromColumn: parsed.fromColumn,
+            toColumn: this.columnType,
+          };
+
+          this.$emit("drop-card", payload);
+        } catch (err) {
+          console.error("Ошибка парсинга:", err);
+        }
+      }
+    },
+  },
   template: `
-    <div class="column">
+    <div class="column" :class="{ 'drag-over': isDragOver }">
       <h2>{{ title }}</h2>
-      <div class="cards">
+      <div class="cards"
+           @dragover.prevent="onDragOver"
+           @dragleave="onDragLeave"
+           @drop="onDrop">
         <card
           v-for="card in cards"
           :key="card.id"
@@ -201,6 +262,7 @@ new Vue({
             :on-move-forward="getMoveForward(col.type)"
             :on-move-back="col.type === 'col3' ? moveToCol2WithReason : null"
             :on-card-updated="saveToLocalStorage"
+            @drop-card="handleDrop"
           />
         </div>
       </div>
@@ -292,6 +354,40 @@ new Vue({
         data.card.returnReason = data.reason;
         this.col3.splice(index, 1);
         this.col2.push(data.card);
+      }
+    },
+    handleDrop(data) {
+      const { cardId, fromColumn, toColumn } = data;
+
+      if (!data || !cardId) {
+        return;
+      }
+
+      if (fromColumn === toColumn) {
+        return;
+      }
+
+      if (fromColumn === "col4") {
+        return;
+      }
+
+      const fromArr = this[fromColumn];
+      const toArr = this[toColumn];
+
+      if (!fromArr || !toArr) {
+        return;
+      }
+
+      const cardIndex = fromArr.findIndex((c) => c.id === cardId);
+
+      if (cardIndex !== -1) {
+        const card = fromArr[cardIndex];
+
+        const newFromArr = fromArr.filter((c) => c.id !== cardId);
+        const newToArr = [...toArr, card];
+
+        this[fromColumn] = newFromArr;
+        this[toColumn] = newToArr;
       }
     },
     saveToLocalStorage() {
