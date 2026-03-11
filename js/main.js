@@ -70,7 +70,7 @@ Vue.component("card", {
         <p>{{ card.description }}</p>
         <div>Дедлайн: {{ card.deadline }}</div>
 
-        <div v-if="card.returnReason && columnType=='col2'" style="background: rgba(255, 131, 131, 0.67); padding: 5px; margin: 5px 0;">
+        <div v-if="card.returnReason" style="background: rgba(255, 131, 131, 0.67); padding: 5px; margin: 5px 0;">
           Причина: {{ card.returnReason }}
         </div>
 
@@ -118,23 +118,17 @@ Vue.component("board-column", {
     title: String,
     cards: Array,
     columnType: String,
-    onAddCard: Function,
     onDeleteCard: Function,
     onMoveForward: Function,
     onMoveBack: Function,
     onCardUpdated: Function,
   },
   components: {
-    "add-button": Vue.options.components["add-button"],
     card: Vue.options.components["card"],
   },
   template: `
     <div class="column">
       <h2>{{ title }}</h2>
-      <add-button
-        v-if="columnType === 'col1'"
-        @click="onAddCard ? onAddCard() : null"
-      />
       <div class="cards">
         <card
           v-for="card in cards"
@@ -151,24 +145,64 @@ Vue.component("board-column", {
   `,
 });
 
+Vue.component("create-card-form", {
+  data() {
+    return {
+      title: "",
+      description: "",
+      deadline: new Date().toISOString().split("T")[0],
+    };
+  },
+  methods: {
+    createCard() {
+      if (!this.title.trim() || !this.description.trim()) {
+        alert("Заполните заголовок и описание");
+        return;
+      }
+      this.$emit("create", {
+        title: this.title,
+        description: this.description,
+        deadline: this.deadline,
+      });
+      this.title = "";
+      this.description = "";
+      this.deadline = new Date().toISOString().split("T")[0];
+    },
+  },
+  template: `
+    <div class="create-form">
+      <h3>Создать новую задачу</h3>
+      <input v-model="title" placeholder="Заголовок" />
+      <textarea v-model="description" placeholder="Описание"></textarea>
+      <label>Дата дедлайна:</label>
+      <input type="date" v-model="deadline" />
+      <button @click="createCard">Создать задачу</button>
+    </div>
+  `,
+});
+
 new Vue({
   el: "#app",
   template: `
     <div class="board">
       <h1>Kanban доска</h1>
-      <div class="columns">
-        <board-column
-          v-for="col in columns"
-          :key="col.type"
-          :title="col.title"
-          :cards="getCards(col.type)"
-          :column-type="col.type"
-          :on-add-card="col.type === 'col1' ? addCard : null"
-          :on-delete-card="col.type === 'col1' ? deleteCard : null"
-          :on-move-forward="getMoveForward(col.type)"
-          :on-move-back="col.type === 'col3' ? moveToCol2WithReason : null"
-          :on-card-updated="saveToLocalStorage"
-        />
+      <div class="board-content">
+        <div class="sidebar">
+          <create-card-form @create="addCard" />
+        </div>
+        <div class="columns">
+          <board-column
+            v-for="col in columns"
+            :key="col.type"
+            :title="col.title"
+            :cards="getCards(col.type)"
+            :column-type="col.type"
+            :on-delete-card="col.type === 'col1' ? deleteCard : null"
+            :on-move-forward="getMoveForward(col.type)"
+            :on-move-back="col.type === 'col3' ? moveToCol2WithReason : null"
+            :on-card-updated="saveToLocalStorage"
+          />
+        </div>
       </div>
     </div>
   `,
@@ -214,13 +248,17 @@ new Vue({
       };
       return map[type] || null;
     },
-    addCard() {
+    addCard(cardData) {
+      if (this.col1.length >= 3) {
+        alert("В колонке 'Запланированные' может быть не более 3 задач");
+        return;
+      }
       const now = new Date();
       const newCard = {
         id: this.nextId++,
-        title: "Новая задача",
-        description: "Описание",
-        deadline: now.toISOString().split("T")[0],
+        title: cardData.title,
+        description: cardData.description,
+        deadline: cardData.deadline,
         createdDate: now.toLocaleDateString(),
         editedDate: null,
         returnReason: null,
