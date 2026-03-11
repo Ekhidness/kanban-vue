@@ -249,10 +249,6 @@ new Vue({
       return map[type] || null;
     },
     addCard(cardData) {
-      if (this.col1.length >= 3) {
-        alert("В колонке 'Запланированные' может быть не более 3 задач");
-        return;
-      }
       const now = new Date();
       const newCard = {
         id: this.nextId++,
